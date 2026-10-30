@@ -1,0 +1,297 @@
+{
+  "feature_version": 1,
+  "feature_names": [
+    "rule_R1",
+    "rule_R2",
+    "rule_R3",
+    "rule_R4",
+    "rule_R5",
+    "rule_R6",
+    "rule_R7",
+    "severity_norm",
+    "penalty_norm",
+    "act_change_width",
+    "act_reroute",
+    "act_add_route",
+    "act_add_jumper",
+    "act_move_comp",
+    "target_route",
+    "target_pair",
+    "target_pad",
+    "target_face",
+    "target_trench",
+    "width_cur_norm",
+    "pts_count_norm",
+    "path_len_norm",
+    "score_norm",
+    "n_issues_norm",
+    "n_routes_norm",
+    "board_area_norm"
+  ],
+  "weights": [
+    0.469647,
+    0.256544,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.115076,
+    1.840431,
+    0.923302,
+    0.469647,
+    0.371619,
+    0.0,
+    -0.841266,
+    0.0,
+    0.469647,
+    0.371619,
+    0.0,
+    0.0,
+    0.115076,
+    -0.011096,
+    -0.228131,
+    1.082181,
+    0.472747,
+    0.129321,
+    0.152691,
+    -0.391254
+  ],
+  "bias": 0.506683,
+  "meta": {
+    "trained_at": "2026-10-28T22:46:36",
+    "samples": 137,
+    "alpha": 1.0,
+    "scenarios": [
+      "10器件",
+      "10器件-加线",
+      "10器件-加线近",
+      "10器件-宽线",
+      "10器件-极细",
+      "T19A-下限",
+      "T19A-中线",
+      "T19A-加线A",
+      "T19A-加线B",
+      "T19A-加线C",
+      "T19A-基准",
+      "T19A-宽线",
+      "T19A-极细",
+      "T19A-超细",
+      "T19A-近距",
+      "凸台-加线",
+      "凸台-基准",
+      "凸台-极细",
+      "斜面-加线",
+      "斜面-基准",
+      "斜面-极细",
+      "装配-基准",
+      "装配-极细",
+      "装配旋转-基准"
+    ],
+    "labels": "score_after - score_before（实测，非人工标注）",
+    "by_rule": {
+      "R1": 92,
+      "R2": 18,
+      "R7": 12,
+      "": 15
+    },
+    "by_action": {
+      "change_width": 92,
+      "reroute": 30,
+      "add_jumper": 15
+    },
+    "in_sample": {
+      "mae": 0.5997,
+      "r2": 0.676,
+      "pairwise_rank_accuracy": 0.8393,
+      "pairs": 5956
+    },
+    "loso": {
+      "per_scenario": [
+        {
+          "scenario": "10器件",
+          "n": 3,
+          "model": 0.0,
+          "heuristic": 0.0,
+          "blend": 0.0
+        },
+        {
+          "scenario": "10器件-加线",
+          "n": 5,
+          "model": 0.75,
+          "heuristic": 0.75,
+          "blend": 0.75
+        },
+        {
+          "scenario": "10器件-加线近",
+          "n": 5,
+          "model": 1.0,
+          "heuristic": 1.0,
+          "blend": 1.0
+        },
+        {
+          "scenario": "10器件-宽线",
+          "n": 3,
+          "model": 0.0,
+          "heuristic": 0.0,
+          "blend": 0.0
+        },
+        {
+          "scenario": "10器件-极细",
+          "n": 3,
+          "model": 0.0,
+          "heuristic": 0.0,
+          "blend": 0.0
+        },
+        {
+          "scenario": "T19A-下限",
+          "n": 3,
+          "model": 0.333,
+          "heuristic": 0.333,
+          "blend": 0.333
+        },
+        {
+          "scenario": "T19A-中线",
+          "n": 6,
+          "model": 0.75,
+          "heuristic": 0.5,
+          "blend": 0.75
+        },
+        {
+          "scenario": "T19A-加线A",
+          "n": 7,
+          "model": 0.333,
+          "heuristic": 0.0,
+          "blend": 0.333
+        },
+        {
+          "scenario": "T19A-加线B",
+          "n": 9,
+          "model": 0.917,
+          "heuristic": 0.833,
+          "blend": 0.917
+        },
+        {
+          "scenario": "T19A-加线C",
+          "n": 8,
+          "model": 0.789,
+          "heuristic": 0.684,
+          "blend": 0.789
+        },
+        {
+          "scenario": "T19A-基准",
+          "n": 7,
+          "model": 0.833,
+          "heuristic": 0.667,
+          "blend": 0.833
+        },
+        {
+          "scenario": "T19A-宽线",
+          "n": 4,
+          "model": 0.5,
+          "heuristic": 0.5,
+          "blend": 0.5
+        },
+        {
+          "scenario": "T19A-极细",
+          "n": 6,
+          "model": 0.75,
+          "heuristic": 0.5,
+          "blend": 0.75
+        },
+        {
+          "scenario": "T19A-超细",
+          "n": 7,
+          "model": 0.833,
+          "heuristic": 0.667,
+          "blend": 0.833
+        },
+        {
+          "scenario": "T19A-近距",
+          "n": 4,
+          "model": 0.5,
+          "heuristic": 0.5,
+          "blend": 0.5
+        },
+        {
+          "scenario": "凸台-加线",
+          "n": 7,
+          "model": 0.333,
+          "heuristic": 0.0,
+          "blend": 0.333
+        },
+        {
+          "scenario": "凸台-基准",
+          "n": 6,
+          "model": 0.75,
+          "heuristic": 0.5,
+          "blend": 0.75
+        },
+        {
+          "scenario": "凸台-极细",
+          "n": 7,
+          "model": 0.786,
+          "heuristic": 0.714,
+          "blend": 0.786
+        },
+        {
+          "scenario": "斜面-加线",
+          "n": 7,
+          "model": 0.333,
+          "heuristic": 0.0,
+          "blend": 0.333
+        },
+        {
+          "scenario": "斜面-基准",
+          "n": 5,
+          "model": 0.5,
+          "heuristic": 0.0,
+          "blend": 0.5
+        },
+        {
+          "scenario": "斜面-极细",
+          "n": 5,
+          "model": 0.5,
+          "heuristic": 0.0,
+          "blend": 0.5
+        },
+        {
+          "scenario": "装配-基准",
+          "n": 7,
+          "model": 0.833,
+          "heuristic": 0.667,
+          "blend": 0.833
+        },
+        {
+          "scenario": "装配-极细",
+          "n": 6,
+          "model": 0.75,
+          "heuristic": 0.5,
+          "blend": 0.75
+        },
+        {
+          "scenario": "装配旋转-基准",
+          "n": 7,
+          "model": 0.6,
+          "heuristic": 0.5,
+          "blend": 0.7
+        }
+      ],
+      "model": 0.57,
+      "heuristic": 0.409,
+      "blend": 0.574,
+      "note": "留一场景交叉验证：每行是该板型完全未参与训练时的排序准确率"
+    },
+    "holdout_scenarios": [
+      "斜面-加线",
+      "斜面-基准",
+      "斜面-极细",
+      "装配-基准",
+      "装配-极细",
+      "装配旋转-基准"
+    ],
+    "mae": 0.5997,
+    "r2": 0.676,
+    "pairwise_rank_accuracy": 0.8393,
+    "pairs": 5956
+  }
+}

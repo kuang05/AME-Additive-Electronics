@@ -1,0 +1,53 @@
+# 本地一键起：AME + PostgreSQL + Redis
+#
+#   docker compose up --build
+#   打开 http://127.0.0.1:8000
+#
+# 这套 compose 就是"华为云上要开哪些服务"的本地等价物：
+#   web    → ECS/CCE 上的应用容器
+#   db     → RDS for PostgreSQL
+#   cache  → DCS for Redis
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      AME_DATA_DIR: /data
+      AME_PG_DSN: postgresql://ame:ame@db:5432/ame
+      AME_REDIS_URL: redis://cache:6379/0
+      # 华为云 MaaS（赛题要求）：在控制台「ModelArts Studio → 在线推理」
+      # 创建服务后填入 API Key。留空则自动降级为离线规则，功能不受影响。
+      AME_MAAS_API_KEY: ${AME_MAAS_API_KEY:-}
+      # AME_MAAS_MODEL: deepseek-v3-32k
+      # AME_MAAS_ENDPOINT: https://api.modelarts-maas.com/v1/chat/completions
+    volumes:
+      - ame-data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ame
+      POSTGRES_PASSWORD: ame
+      POSTGRES_DB: ame
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ame"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cache:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+volumes:
+  ame-data:
+  pg-data:

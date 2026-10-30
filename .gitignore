@@ -1,0 +1,40 @@
+# ---- 构建产物 ----
+# dist/ 是 PyInstaller 打包输出（约 141 MB，含二进制），不入库；
+# 需要基线产物时用 `python build_package.py` 重新生成，或取 _snapshots/ 里的归档。
+dist/
+build/
+*.spec.bak
+
+# ---- Python 缓存 ----
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ---- 本地快照与临时数据 ----
+_snapshots/
+*.zip
+!samples/**/*.zip
+tmp/
+*.log
+
+# ---- 运行期数据目录（工程库 / blob / 导出） ----
+data/
+out/
+exports/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

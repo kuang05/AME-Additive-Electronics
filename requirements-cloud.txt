@@ -1,0 +1,18 @@
+# 云上 Demo 依赖（桌面版不需要这些）
+# 桌面版只用 shapely + numpy + pillow + tkinter
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+# PostgreSQL 驱动。docker-compose.yml 默认设置了 AME_PG_DSN（连自带的 db 服务），
+# 所以这条**不能注释**——否则 `docker compose up` 后 PgStore 构造直接抛
+# "使用 PostgreSQL 存储需要安装 psycopg"，/api/health 恒报 ok=false。
+# 纯 SQLite 部署（不设 AME_PG_DSN）不会 import psycopg，装着也无副作用。
+psycopg[binary]>=3.1
+# 可选：接 Redis 做切片缓存与工程锁（无则自动降级，功能不受影响）
+# redis>=5.0
+
+# 开发/验证用：用真实 PostgreSQL 方言解析 SQL。
+# tests/test_pg_dialect.py 的 TestPostgresDialectParser 依赖它做"无 RDS 环境下的
+# 最强替代验证"（DDL 38 条 + 运行期 SQL 逐条按 PG 方言解析）。
+# 未安装时这些用例会 skip，不影响其他测试。
+sqlglot>=30.0

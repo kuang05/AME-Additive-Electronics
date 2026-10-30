@@ -1,0 +1,66 @@
+# 静态检查配置（ruff）。
+#
+# 定位：**只拦截会导致运行期错误的规则**，不做风格裁决。
+# 风格类的规则（行长、引号、命名）不启用——本项目代码风格已经稳定，
+# 强行改风格只会产生无意义的 diff 与合并冲突。
+#
+# 基线（2026-10-28）：F / E9 / B023 全部清零。新增违规即视为回归。
+#
+# 运行：
+#   python -m ruff check ame/
+#   python -m ruff check ame/ --select F,E9        # 只看正确性
+
+target-version = "py311"
+line-length = 100
+
+exclude = [
+    ".git",
+    "build",
+    "dist",
+    "__pycache__",
+    "*.pyc",
+]
+
+[lint]
+# 规则集选择：
+#   E9  语法/导入级错误（未定义名、重复定义等）
+#   F    pyflakes（未使用名、未定义名、f-string 问题）
+#   B    bugbear（可变的默认参数、循环闭包、raise 缺 from 等真实陷阱）
+#   ARG  未使用参数（区分"真没用"与"接口约定"靠 noqa）
+select = ["E9", "F", "B", "ARG", "RET", "PIE", "SIM"]
+
+# 明确不检查的项目及理由
+ignore = [
+    # re-export 是刻意的兼容层（stepio/connectivity/slicer 保留了旧导入路径），
+    # 这些 import 在本模块内"看起来"未使用，但对外是接口。
+    "F401",
+    # 未使用参数：多处是实现接口的一部分（mixin 方法、回调签名、规则函数
+    # 的统一 ctx 签名）。删参数会破坏继承与调用约定，加 noqa 只是噪音。
+    "ARG001",
+    "ARG002",
+    "ARG005",
+    # 可折叠的 if / 可简化的返回：属于可读性偏好，不改。
+    "SIM102",
+    "SIM108",
+    "SIM114",
+    "SIM105",
+    "SIM910",
+    "RET504",
+    "PIE810",
+]
+
+[lint.per-file-ignores]
+# FastAPI 的依赖注入就是写在默认参数里的：File(...)/Body(...) 是框架约定，
+# 不是"在默认参数里执行有副作用的调用"。
+"ame/web/**" = ["B008"]
+# 训练脚本按命令行工具组织，`if __name__` 之前保留大量私有函数与演示入口。
+"ame/ai/train.py" = ["ARG001", "ARG004"]
+# 界面层大量方法签名由 Tk 回调决定（event 参数可能不用）。
+"ame/ui/**" = ["ARG001", "ARG003", "ARG004"]
+# 测试里 fixture 参数常不被函数体直接引用（由 pytest 注入）。
+"tests/**" = ["ARG001", "ARG002", "ARG003", "ARG004", "ARG005"]
+
+[lint.mccabe]
+# 圈复杂度上限：超过 15 说明这个函数该拆了。
+# 现有代码里超标的都在有意保留清单中（见重构记录 §5）。
+max-complexity = 20

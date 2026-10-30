@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AME 增材电子一体化 · 云上 Demo</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2129; --panel2:#232c36; --line:#2e3844;
+    --text:#e6e8ea; --muted:#8b98a5; --accent:#4a9eff;
+    --good:#5cc98a; --warn:#f0a84b; --bad:#ef5f5f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.6 "Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+       background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  header{display:flex;align-items:center;gap:16px;padding:10px 18px;
+         background:var(--panel);border-bottom:1px solid var(--line);flex:none}
+  header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.5px}
+  .badge{font-size:12px;padding:2px 8px;border-radius:10px;background:var(--panel2);color:var(--muted)}
+  .score{margin-left:auto;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+  main{flex:1;display:flex;min-height:0}
+  aside{width:260px;flex:none;background:var(--panel);border-right:1px solid var(--line);
+        padding:14px;overflow-y:auto}
+  aside h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;
+           margin:18px 0 8px;font-weight:600}
+  aside h2:first-child{margin-top:0}
+  button{width:100%;padding:8px 10px;margin-bottom:6px;border:0;border-radius:6px;
+         background:var(--panel2);color:var(--text);cursor:pointer;font-size:13px;
+         text-align:left;transition:.15s}
+  button:hover{background:#2c3844}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--accent);color:#0b1016;font-weight:600}
+  button.primary:hover{background:#6bb2ff}
+  button.ghost{background:transparent;border:1px solid var(--line)}
+  #canvasWrap{flex:1;position:relative;min-width:0;display:flex;flex-direction:column}
+  /* 逐层播放条（SLC-006）：不占画布，横在画布上方 */
+  #playbar{display:flex;align-items:center;gap:10px;padding:7px 14px;
+           background:var(--panel2);border-bottom:1px solid var(--line);font-size:12.5px;flex:none}
+  #playbar.hidden{display:none}
+  #playbar button{width:auto;margin:0;padding:3px 10px;font-size:12px}
+  #playbar input[type=range]{flex:1;min-width:80px;accent-color:var(--accent)}
+  #playbar label{display:flex;align-items:center;gap:4px;color:var(--muted);margin:0}
+  #playInfo{font-family:Consolas,monospace;color:var(--good);white-space:nowrap}
+  /* 浮层：规则阈值 / 版本历史共用 */
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;
+         align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
+  #modal.on{display:flex}
+  #modalBox{width:min(640px,92vw);max-height:82vh;display:flex;flex-direction:column;
+            background:var(--panel);border:1px solid var(--line);border-radius:10px;
+            box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  #modalHd{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+  #modalHd b{font-size:14px}
+  #modalHd button{width:auto;margin:0 0 0 auto;padding:4px 12px;font-size:12px}
+  #modalBody{padding:14px 16px;overflow-y:auto;font-size:12.5px}
+  #modalFt{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:8px}
+  #modalFt button{width:auto;margin:0;padding:6px 16px}
+  .ruleRow{display:flex;align-items:center;gap:8px;padding:7px 0;
+           border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .ruleRow .rc{font-family:Consolas,monospace;color:var(--accent);width:30px}
+  .ruleRow .rn{width:64px}
+  .ruleRow .rr{margin-left:auto;color:var(--muted);font-size:11px}
+  .ruleRow label{display:flex;align-items:center;gap:5px;color:var(--muted)}
+  .ruleRow input[type=number]{width:82px;padding:3px 6px;background:#151b22;
+        border:1px solid var(--line);color:var(--text);border-radius:4px}
+  .verRow{padding:8px 0;border-bottom:1px solid var(--line)}
+  .verRow .vh{display:flex;gap:10px;align-items:baseline}
+  .verRow .vs{font-weight:700;font-variant-numeric:tabular-nums}
+  .verRow .vd{color:var(--muted);font-size:11.5px}
+  .issue.sel{outline:1px solid var(--accent)}
+  #tabs{display:flex;gap:2px;padding:8px 12px 0;background:var(--panel);border-bottom:1px solid var(--line)}
+  .tab{padding:6px 14px;border-radius:6px 6px 0 0;background:transparent;color:var(--muted);
+       cursor:pointer;font-size:13px;border:0}
+  .tab.on{background:var(--panel2);color:var(--text)}
+  canvas{flex:1;width:100%;display:block;background:#0b0f14;cursor:crosshair}
+  #right{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);
+         display:flex;flex-direction:column;min-height:0}
+  #right .hd{padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px}
+  #issues{flex:1;overflow-y:auto;padding:8px}
+  #prop{flex:none;border-bottom:1px solid var(--line);background:#1e262f}
+  #prop.hidden{display:none}
+  #prop input{width:70px;padding:4px 6px;background:#151b22;border:1px solid var(--line);
+              color:var(--text);border-radius:4px}
+  .issue{padding:8px 10px;margin-bottom:6px;border-radius:6px;background:var(--panel2);
+         border-left:3px solid var(--muted);font-size:12.5px;cursor:pointer}
+  .issue:hover{background:#2c3844}
+  .issue.s3{border-left-color:var(--bad)} .issue.s2{border-left-color:var(--warn)}
+  .issue.s1{border-left-color:var(--muted)}
+  .issue .r{font-weight:600;color:var(--accent)}
+  .issue .m{color:var(--muted);margin-top:3px}
+  #log{position:absolute;left:10px;bottom:10px;width:min(560px,52%);max-height:190px;
+       overflow-y:auto;padding:8px 12px;font:12px/1.5 Consolas,monospace;
+       background:rgba(11,15,20,.94);border:1px solid var(--line);border-radius:8px;
+       color:var(--muted);white-space:pre-wrap;backdrop-filter:blur(4px);
+       box-shadow:0 6px 20px rgba(0,0,0,.45);transition:opacity .2s}
+  #log.hidden{opacity:0;pointer-events:none}
+  #logToggle{position:absolute;right:10px;bottom:10px;width:auto;padding:5px 12px;
+             margin:0;font-size:12px;background:rgba(35,44,54,.94);border:1px solid var(--line)}
+  .ok{color:var(--good)} .err{color:var(--bad)} .warn{color:var(--warn)}
+  #status{padding:6px 18px;background:var(--panel);border-top:1px solid var(--line);
+          font-size:12px;color:var(--muted);flex:none}
+  .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--line);
+           border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+           vertical-align:-2px;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hint{font-size:11.5px;color:var(--muted);line-height:1.5;margin:4px 0 8px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AME 增材电子一体化</h1>
+  <span class="badge" id="backend">存储 —</span>
+  <span class="badge" id="projName">未打开工程</span>
+  <div class="score" id="score">—</div>
+</header>
+
+<main>
+  <aside>
+    <h2>工程</h2>
+    <button class="primary" id="btnSample">打开示例工程</button>
+    <button id="btnNew">新建空工程</button>
+
+    <h2>① 结构域</h2>
+    <button id="btnStep">导入 STEP…</button>
+    <input type="file" id="fileStep" accept=".step,.stp" hidden>
+
+    <h2>② 走线域</h2>
+    <button id="btnBoard">导入板文件…</button>
+    <input type="file" id="fileBoard" accept=".kicad_pcb,.json" hidden>
+    <button id="btnRoute">开始布线（画布上点击）</button>
+    <button id="btnUndo">撤销 (Ctrl+Z)</button>
+    <button id="btnRedo">重做 (Ctrl+Y)</button>
+    <p class="hint">布线：先点一个焊盘选网络 → 依次点落点 → 双击结束。
+点选走线后可在「属性」里改线宽或删除。</p>
+
+    <h2>③ 可打性</h2>
+    <button id="btnMrc">运行检查并评分</button>
+    <button id="btnHeat">热力图：关</button>
+    <button id="btnRules">规则阈值…</button>
+    <button id="btnVersions">版本历史…</button>
+    <button id="btnAi">AI 收益排序（本地）</button>
+    <button id="btnAiMaaS">AI 解释（华为云 MaaS）</button>
+    <p class="hint">点右侧问题条目可定位并在画布高亮对应对象。</p>
+
+    <h2>④ 切片</h2>
+    <button class="primary" id="btnSlice">执行切片</button>
+    <button id="btnGcode">下载 G-code</button>
+
+    <h2>⑤ 智能体</h2>
+    <button id="btnAgent">运行设计 Agent</button>
+
+    <h2>视图</h2>
+    <div class="ruleRow" style="border:0;padding:2px 0">
+      <label title="三维视图只画 Z ≤ 该值的面（STR-003 剖切）">剖切 Z
+        <input id="sectionZ" type="number" step="0.5" placeholder="不剖切" style="width:76px">
+      </label>
+      <button id="btnSectionClear" class="ghost"
+              style="width:auto;margin:0;padding:3px 8px;font-size:11.5px">清除</button>
+    </div>
+  </aside>
+
+  <div id="canvasWrap">
+    <div id="tabs">
+      <button class="tab on" data-view="3d">三维视图</button>
+      <button class="tab" data-view="2d">二维布线</button>
+    </div>
+    <div id="playbar" class="hidden">
+      <button id="btnPlayPrev">◀ 上一道次</button>
+      <button id="btnPlayNext">下一道次 ▶</button>
+      <input type="range" id="playRange" min="0" max="0" value="0">
+      <span id="playInfo">—</span>
+      <label title="同时标出每条路径的起点（圆）与终点（方）">
+        <input type="checkbox" id="playEnds"> 起停点</label>
+      <button id="btnPlayExit" class="ghost">退出预览</button>
+    </div>
+    <canvas id="cv"></canvas>
+    <div id="log">就绪。先点「打开示例工程」。</div>
+    <button id="logToggle" title="显示/隐藏运行日志">日志</button>
+  </div>
+
+  <div id="right">
+    <div class="hd" id="rightHd">问题列表</div>
+    <div id="prop" class="hidden">
+      <div id="propBody" style="padding:10px 12px;font-size:12.5px"></div>
+      <div style="padding:0 12px 10px;display:flex;gap:6px">
+        <button id="btnWidthApply" style="margin:0;flex:1">应用线宽</button>
+        <button id="btnDeleteSel" style="margin:0;flex:1">删除走线</button>
+      </div>
+    </div>
+    <div id="issues"></div>
+  </div>
+</main>
+
+<div id="modal">
+  <div id="modalBox">
+    <div id="modalHd"><b id="modalTitle">—</b><button id="modalClose">关闭</button></div>
+    <div id="modalBody"></div>
+    <div id="modalFt"></div>
+  </div>
+</div>
+
+<div id="status">就绪</div>
+
+<script>
+'use strict';
+
+// ────────────────────────────────── 状态
+const S = {
+  pid: null, view: '3d',
+  outline: [], comps: [], pads: [], routes: [], faces: [], obstacles: [],
+  issues: [], score: null,
+  zoom: 1, panX: 0, panY: 0,
+  // 三维相机（正交等轴测）
+  az: Math.PI / 4, el: 0.62,
+  drag: null,
+  // 布线状态：选中网络、已落点、当前工具
+  tool: null, routeNet: null, dragPts: [],
+  selected: null,
+  // 逐层播放（SLC-006）：playIndex 为 null 表示不处于预览态
+  playIndex: null, playTotal: 0, playLayer: null, playEnds: false,
+  // 热力图开关与缓存（MRC-010）
+  heat: false, heatData: null,
+  // 剖切高度（STR-003）：null 表示不剖切
+  sectionZ: null,
+  // 规则面板的原始值，用于"只提交改动项"（MRC-011）
+  rulesOrig: null, rulesEnabled: null,
+};
+
+const $ = id => document.getElementById(id);
+const cv = $('cv');
+const ctx = cv.getContext('2d');
+
+function log(msg, cls = '') {
+  const el = $('log');
+  el.innerHTML += (el.innerHTML.endsWith('\n') || el.innerHTML === '' ? '' : '\n')
+    + `<span class="${cls}">${msg}</span>`;
+  el.scrollTop = el.scrollHeight;
+}
+function status(msg, cls = '') {
+  $('status').innerHTML = (cls === 'busy' ? '<span class="spinner"></span>' : '') + msg;
+}
+async function api(path, opt = {}) {
+  const r = await fetch('/api' + path, opt);
+  if (!r.ok) {
+    let d = 'HTTP ' + r.status;
+    try { const j = await r.json(); d = j.detail || j.error || d; } catch (_) {}
+    throw new Error(d);
+  }
+  return r.headers.get('content-type')?.includes('json') ? r.json() : r.text();
+}
+
+// ────────────────────────────────── 投影
+function worldBBox() {
+  if (S.outline.length) {
+    const xs = S.outline.map(p => p[0]), ys = S.outline.map(p => p[1]);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  }
+  return [0, 0, 100, 100];
+}
+function modelBBox() {
+  if (S.faces.length) {
+    const xs = [], ys = [], zs = [];
+    for (const f of S.faces) for (const p of (f.loop || [])) { xs.push(p[0]); ys.push(p[1]); zs.push(p[2]); }
+    if (xs.length) return [Math.min(...xs), Math.min(...ys), Math.min(...zs),
+                           Math.max(...xs), Math.max(...ys), Math.max(...zs)];
+  }
+  const [x0, y0, x1, y1] = worldBBox();
+  return [x0, y0, 0, x1, y1, 10];
+}
+function scaleFor() {
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (S.view === '2d') {
+    const [x0, y0, x1, y1] = worldBBox();
+    const span = Math.max(x1 - x0, y1 - y0, 1e-6);
+    return { s: 0.86 * Math.min(w, h) / span * S.zoom,
+             cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w, h };
+  }
+  // 三维：按**投影后**的实际范围取景。
+  // 早期用 3D 包围盒的对角线做跨度，薄板（100×60×2）会被压成一条线——
+  // 因为 z 方向只有 2 mm，抬升角一压就近乎水平。正确做法是把包围盒
+  // 8 个角点投到屏幕坐标，用投影后的 bbox 算比例。
+  const b = modelBBox();
+  const cx = (b[0] + b[3]) / 2, cy = (b[1] + b[4]) / 2, cz = (b[2] + b[5]) / 2;
+  const ca = Math.cos(S.az), sa = Math.sin(S.az);
+  const ce = Math.cos(S.el), se = Math.sin(S.el);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const zz of [b[2], b[5]]) {
+    for (const xx of [b[0], b[3]]) {
+      for (const yy of [b[1], b[4]]) {
+        const dx = xx - cx, dy = yy - cy, dz = zz - cz;
+        const rx = dx * ca - dy * sa;
+        const ry = dx * sa + dy * ca;
+        const sx = rx;
+        const sy = ry * se - dz * ce;
+        if (sx < minX) minX = sx; if (sx > maxX) maxX = sx;
+        if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
+      }
+    }
+  }
+  const spanX = Math.max(maxX - minX, 1e-6);
+  const spanY = Math.max(maxY - minY, 1e-6);
+  // 分别按宽高适配，取较小者，保证整体可见
+  const s = Math.min(0.86 * w / spanX, 0.86 * h / spanY) * S.zoom;
+  return { s, cx, cy, cz, w, h };
+}
+function toScreen(x, y, z = 0) {
+  const k = scaleFor();
+  if (S.view === '2d') {
+    return [k.w / 2 + (x - k.cx) * k.s + S.panX,
+            k.h / 2 - (y - k.cy) * k.s + S.panY];
+  }
+  // 等轴测：绕 Z 轴转 az，再抬头 el
+  const dx = x - k.cx, dy = y - k.cy, dz = z - k.cz;
+  const ca = Math.cos(S.az), sa = Math.sin(S.az);
+  const rx = dx * ca - dy * sa;
+  const ry = dx * sa + dy * ca;
+  const ce = Math.cos(S.el), se = Math.sin(S.el);
+  const sx = rx;
+  const sy = ry * se - dz * ce;
+  return [k.w / 2 + sx * k.s + S.panX, k.h / 2 - sy * k.s + S.panY];
+}
+
+// ────────────────────────────────── 绘制
+function fitCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = cv.clientWidth * dpr;
+  cv.height = cv.clientHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function draw() {
+  // 画布 backing store 必须与 CSS 尺寸同步。布局变化（新增播放条、浮层打开、
+  // 侧栏换宽）不会触发 window resize，只靠 resize 监听会让位图与显示尺寸
+  // 失配——表现为画面被拉伸/模糊，或局部空白。这里每帧校验一次，代价可忽略。
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(cv.clientWidth * dpr)
+      || cv.height !== Math.round(cv.clientHeight * dpr)) {
+    fitCanvas();
+  }
+  const w = cv.clientWidth, h = cv.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  if (!S.pid) {
+    ctx.fillStyle = '#8b98a5';
+    ctx.font = '15px "Microsoft YaHei UI",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('还没有打开工程', w / 2, h / 2 - 12);
+    ctx.font = '13px "Microsoft YaHei UI",sans-serif';
+    ctx.fillText('点左侧「打开示例工程」一键看到完整链路', w / 2, h / 2 + 14);
+    return;
+  }
+
+  // 网格
+  ctx.strokeStyle = '#182028';
+  ctx.lineWidth = 1;
+  const [x0, y0, x1, y1] = worldBBox();
+  for (let gx = Math.floor(x0 / 10) * 10; gx <= x1; gx += 10) {
+    const a = toScreen(gx, y0), b = toScreen(gx, y1);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+  }
+  for (let gy = Math.floor(y0 / 10) * 10; gy <= y1; gy += 10) {
+    const a = toScreen(x0, gy), b = toScreen(x1, gy);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+  }
+
+  // 板框
+  if (S.outline.length > 1) {
+    ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    S.outline.forEach((p, i) => {
+      const q = toScreen(p[0], p[1]);
+      i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+    });
+    ctx.closePath(); ctx.stroke();
+  }
+
+  // 结构面（三维）
+  // STR-003 剖切：只有**整个面都高于阈值**才隐藏（任一点低于即保留）。
+  // 判据必须与桌面版 render.py 的 `min(zs) > section_z` 一致，否则同一份模型
+  // 在两端剖出不同的形状——而这正是"云上只是换壳"要守的性质。
+  if (S.view === '3d' && S.faces.length) {
+    const clip = S.sectionZ;
+    const polys = S.faces
+      .filter(f => clip === null
+               || (f.loop || []).some(p => p[2] <= clip + 1e-6))
+      .map(f => {
+        const pts = (f.loop || []).map(p => toScreen(p[0], p[1], p[2]));
+        const nz = (f.normal || [0, 0, 1])[2];
+        const depth = (f.loop || []).reduce((s, p) => s + p[2], 0) / Math.max(1, (f.loop || []).length);
+        // 着色：水平面亮、斜面橙、竖直面暗
+        let fill = '#4b5866';
+        if (Math.abs(nz) > 0.85) fill = '#5d6b7a';
+        else if (Math.abs(nz) < 0.35) fill = '#3a454f';
+        else fill = '#7a5f3a';
+        return { pts, depth, fill, slope: f.slope_deg };
+      });
+    polys.sort((a, b) => a.depth - b.depth);
+    for (const p of polys) {
+      if (p.pts.length < 3) continue;
+      ctx.beginPath();
+      p.pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]));
+      ctx.closePath();
+      ctx.fillStyle = p.fill; ctx.globalAlpha = 0.92; ctx.fill();
+      ctx.globalAlpha = 1; ctx.strokeStyle = '#2a3440'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+
+  // 走线
+  // 逐层播放时只画当前道次的路径，并且**不画**设计走线——两套几何叠在
+  // 一起会让人分不清"我改的设计"与"切片实际会走的路径"（桌面版同处理）。
+  const highlightId = (S.selected && S.selected.type === 'issue')
+    ? String(S.selected.data.target_id || '') : '';
+  if (S.playIndex === null) {
+    for (const r of S.routes) {
+      if (!r.pts || r.pts.length < 2) continue;
+      // MRC-010 问题定位：target_id 命中（含 "走线 A|走线 B" 这种组合标签，
+      // 所以除 id 前缀外还要按网络名精确匹配，与桌面版 _canvas.py 的判据一致）。
+      const hl = highlightId && (
+        highlightId.includes(String(r.id).slice(0, 8))
+        || highlightId.split('|').some(part => part.trim() === '走线 ' + r.net));
+      ctx.strokeStyle = hl ? '#ef5f5f' : '#d0a85c';
+      ctx.lineWidth = Math.max(1.5, (r.width || 0.6) * 3) * (hl ? 2.2 : 1);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      r.pts.forEach((p, i) => {
+        const q = toScreen(p[0], p[1], 0.34);
+        i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+      });
+      ctx.stroke();
+    }
+  } else if (S.playLayer) {
+    ctx.strokeStyle = '#8fe3b0';
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const path of S.playLayer.paths) {
+      if (!path.pts || path.pts.length < 2) continue;
+      ctx.beginPath();
+      path.pts.forEach((p, i) => {
+        const q = toScreen(p[0], p[1], 0.34);
+        i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+      });
+      ctx.stroke();
+      if (S.playEnds) {
+        const s0 = toScreen(path.pts[0][0], path.pts[0][1], 0.34);
+        const s1 = toScreen(path.pts[path.pts.length - 1][0],
+                            path.pts[path.pts.length - 1][1], 0.34);
+        ctx.strokeStyle = '#5cc98a'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(s0[0], s0[1], 3.2, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = '#f0a84b';
+        ctx.beginPath(); ctx.rect(s1[0] - 3, s1[1] - 3, 6, 6); ctx.stroke();
+        ctx.strokeStyle = '#8fe3b0'; ctx.lineWidth = 1.6;
+      }
+    }
+  }
+
+  // 布线预览（当前拖拽的点列）
+  if (S.tool === 'route' && S.dragPts.length) {
+    ctx.strokeStyle = '#5cc98a';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    ctx.beginPath();
+    S.dragPts.forEach((p, i) => {
+      const q = toScreen(p[0], p[1], 0.34);
+      i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // 起点标记
+    const s0 = toScreen(S.dragPts[0][0], S.dragPts[0][1], 0.34);
+    ctx.strokeStyle = '#5cc98a';
+    ctx.beginPath(); ctx.arc(s0[0], s0[1], 5, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // 热力图（MRC-010）：按 weight 画半透明圆。半径按权重开方，否则最高权重的
+  // 圆会盖住整块板；alpha 上限 0.5，保证底下的走线仍看得见。
+  if (S.heat && S.heatData && S.heatData.points) {
+    const maxW = S.heatData.max_weight || 1;
+    for (const p of S.heatData.points) {
+      const q = toScreen(p.x, p.y, 0.34);
+      const k = Math.sqrt(Math.min(1, p.weight / maxW));
+      // 半径按当前缩放收敛：缩得很小时不该画一个比板子还大的圈，
+      // 那会糊成一团、把图形本身盖住（实测缩放到 0.5 时几乎全屏泛黄）。
+      const rad = Math.max(6, Math.min(46, 10 + 30 * k) * S.zoom);
+      const g = ctx.createRadialGradient(q[0], q[1], 0, q[0], q[1], rad);
+      g.addColorStop(0, `rgba(239,95,95,${0.18 + 0.34 * k})`);
+      g.addColorStop(0.6, `rgba(240,168,75,${0.10 + 0.18 * k})`);
+      g.addColorStop(1, 'rgba(240,168,75,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(q[0], q[1], rad, 0, Math.PI * 2); ctx.fill();
+      if (k > 0.75) {
+        ctx.fillStyle = 'rgba(239,95,95,.85)';
+        ctx.font = '10px Consolas,monospace'; ctx.textAlign = 'center';
+        ctx.fillText(p.weight.toFixed(1), q[0], q[1] - rad - 3);
+      }
+    }
+  }
+
+  // 选中对象高亮
+  if (S.selected) {
+    ctx.strokeStyle = '#4a9eff';
+    ctx.lineWidth = 2;
+    if (S.selected.type === 'route') {
+      ctx.beginPath();
+      (S.selected.data.pts || []).forEach((p, i) => {
+        const q = toScreen(p[0], p[1], 0.34);
+        i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+      });
+      ctx.stroke();
+    } else if (S.selected.type === 'comp' || S.selected.type === 'pad') {
+      const c = S.selected.data;
+      const q = toScreen(c.x, c.y);
+      ctx.strokeRect(q[0] - 12, q[1] - 12, 24, 24);
+    } else if (S.selected.type === 'issue') {
+      // 问题定位（MRC-010）：焊盘类目标画圈。走线类已在上面加粗染色，
+      // 这里只补端点标记，方便在一堆走线里找到那一条。
+      const tid = String(S.selected.data.target_id || '');
+      const parts = tid.split('|').map(s => s.trim());
+      let hitPads = 0;
+      for (const p of S.pads) {
+        const label = `焊盘${p.ref}.${p.pad_no}`;
+        if (tid.includes(p.id.slice(0, 8)) || parts.includes(label)
+            || tid.includes(label)) {
+          const q = toScreen(p.x, p.y, 0.34);
+          ctx.strokeStyle = '#ef5f5f'; ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.arc(q[0], q[1], 10, 0, Math.PI * 2); ctx.stroke();
+          hitPads += 1;
+        }
+      }
+      // 找不到对应几何时必须说出来，而不是静默无反应——否则用户会以为
+      // "定位坏了"。组合标签（"走线 A|焊盘 B"）常常只能命中一侧。
+      const hitRoute = S.routes.some(r => tid.includes(String(r.id).slice(0, 8))
+        || parts.includes('走线 ' + r.net));
+      if (!hitPads && !hitRoute) {
+        ctx.fillStyle = '#f0a84b';
+        ctx.font = '12px "Microsoft YaHei UI",sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText('该问题没有可定位的几何（面/沟槽类目标）', 14, 18);
+      }
+    }
+  }
+
+  // 器件与焊盘
+  for (const c of S.comps) {
+    // STR-003 剖切同样作用于器件：底面在 z=0，所以按"器件高度 > 剖切高度"
+    // 判定它是否被切断（与桌面版 _canvas.py 的判定一致）。
+    if (S.sectionZ !== null && (c.height || 0) > S.sectionZ + 1e-6) continue;
+    const q = toScreen(c.x, c.y);
+    ctx.fillStyle = '#2c333c'; ctx.strokeStyle = '#7f8b99'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.rect(q[0] - 9, q[1] - 9, 18, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#c9d3dd'; ctx.font = '10px Consolas,monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(c.ref, q[0], q[1]);
+  }
+  for (const p of S.pads) {
+    const q = toScreen(p.x, p.y, 0.34);
+    ctx.fillStyle = '#c8b273';
+    ctx.beginPath(); ctx.arc(q[0], q[1], 2.6, 0, Math.PI * 2); ctx.fill();
+  }
+}
+function scheduleDraw() {
+  if (scheduleDraw.pending) return;
+  scheduleDraw.pending = true;
+  requestAnimationFrame(() => { scheduleDraw.pending = false; draw(); });
+}
+
+// ────────────────────────────────── 渲染面板
+function renderIssues() {
+  const box = $('issues');
+  // 属性面板打开时会把问题列表藏起来（两者抢同一块右侧空间）。
+  // 但如果当前选中的正是"问题"，列表就必须显示出来（否则点问题后列表整个消失）；
+  // 选中走线/器件时保持属性面板优先。
+  if (!S.selected || S.selected.type === 'issue') box.classList.remove('hidden');
+  if (!S.issues.length) {
+    box.innerHTML = `<div class="issue"><span class="m">${
+      S.score === null ? '尚未检查。点左侧「运行检查并评分」。' : '没有命中任何规则（满分）。'
+    }</span></div>`;
+    return;
+  }
+  const sel = (S.selected && S.selected.type === 'issue') ? S.selected.data : null;
+  box.innerHTML = S.issues.map((i, idx) => `
+    <div class="issue s${i.severity}${i === sel ? ' sel' : ''}"
+         data-idx="${idx}" title="点击在画布上定位该对象">
+      <span class="r">${i.rule_code}</span>
+      <span class="m">扣 ${i.penalty} 分</span>
+      <div>${escapeHtml(i.reason)}</div>
+      ${i.suggestion ? `<div class="m">建议：${escapeHtml(i.suggestion)}</div>` : ''}
+    </div>`).join('');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function renderScore() {
+  const el = $('score');
+  if (S.score === null) { el.textContent = '—'; el.style.color = 'var(--muted)'; return; }
+  el.textContent = S.score + ' 分';
+  el.style.color = S.score >= 80 ? 'var(--good)' : S.score >= 60 ? 'var(--warn)' : 'var(--bad)';
+}
+
+// ────────────────────────────────── 数据加载
+async function loadState() {
+  const st = await api(`/projects/${S.pid}/state`);
+  Object.assign(S, {
+    outline: st.outline || [], comps: st.comps || [], pads: st.pads || [],
+    routes: st.routes || [], faces: st.faces || [], obstacles: st.obstacles || [],
+    score: st.score,
+  });
+  // 选中项重挂到新对象上：loadState 会整体替换 comps/routes 数组，旧引用
+  // 变成孤儿，属性面板与高亮就会指向不存在的对象（表现为"改了没反应"）。
+  if (S.selected && ['route', 'comp', 'pad'].includes(S.selected.type)) {
+    const pool = S.selected.type === 'comp' ? S.comps
+      : S.selected.type === 'pad' ? S.pads : S.routes;
+    const again = pool.find(o => o.id === S.selected.data.id);
+    S.selected = again ? { type: S.selected.type, data: again } : null;
+    if (S.selected) showProp(S.selected); else showProp(null);
+  }
+  $('projName').textContent = st.name;
+  renderScore();
+  scheduleDraw();
+}
+async function runMrc() {
+  const m = await api(`/projects/${S.pid}/mrc`, { method: 'POST' });
+  S.score = m.score; S.issues = m.issues;
+  // 选中项必须重挂到这轮的新对象上：renderIssues 用对象同一性判断哪条被选中，
+  // 旧的 issue 对象在 S.issues 整体替换后既不在列表里、也不等于任何新条目，
+  // 表现为"高亮莫名其妙消失"。若这轮已经没有它，说明已被修好，清掉才对。
+  if (S.selected && S.selected.type === 'issue') {
+    const again = m.issues.find(i => i.target_id === S.selected.data.target_id
+                                  && i.rule_code === S.selected.data.rule_code);
+    S.selected = again ? { type: 'issue', data: again } : null;
+  }
+  renderScore(); renderIssues();
+  if (S.heat) {
+    try { S.heatData = await api(`/projects/${S.pid}/heatmap`); } catch (_) {}
+  }
+  scheduleDraw();
+  log(`可打性检查：${m.score} 分，${m.issues.length} 条问题`,
+      m.score >= 80 ? 'ok' : 'warn');
+}
+
+// ────────────────────────────────── 事件绑定
+function busy(btn, fn) {
+  return async (...a) => {
+    btn.disabled = true;
+    try { await fn(...a); }
+    catch (e) { log('错误：' + e.message, 'err'); status('失败：' + e.message); }
+    finally { btn.disabled = false; }
+  };
+}
+
+$('btnSample').onclick = busy($('btnSample'), async () => {
+  status('正在创建示例工程…', 'busy');
+  const r = await api('/projects/sample', { method: 'POST' });
+  S.pid = r.id;
+  // 换工程必须丢弃上一个工程的预览/热力/选中：它们的几何 id 全变了，
+  // 留着只会画出一堆对不上的东西。
+  resetViewState();
+  await loadState(); await runMrc();
+  status('示例工程已就绪：可继续切片或运行 Agent');
+  log(`示例工程：${r.name}（${S.comps.length} 器件 / ${S.pads.length} 焊盘 / ${S.routes.length} 走线）`, 'ok');
+});
+
+$('btnNew').onclick = busy($('btnNew'), async () => {
+  const r = await api('/projects', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: '云端工程 ' + new Date().toLocaleTimeString() }),
+  });
+  S.pid = r.id; S.score = null; S.issues = [];
+  resetViewState();
+  await loadState(); renderIssues(); renderScore();
+  status('空工程已创建，请导入 STEP 与板文件');
+  log('新建工程：' + r.name, 'ok');
+});
+
+function resetViewState() {
+  S.issues = []; S.selected = null; S.heat = false; S.heatData = null;
+  S.sectionZ = null; $('sectionZ').value = '';
+  $('btnHeat').textContent = '热力图：关';
+  $('btnHeat').classList.remove('primary');
+  $('playbar').classList.add('hidden');
+  S.playIndex = null; S.playLayer = null; S.playTotal = 0;
+  $('playRange').max = '0'; $('playRange').value = '0';
+  $('prop').classList.add('hidden');
+}
+
+$('btnStep').onclick = () => $('fileStep').click();
+$('fileStep').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f || !S.pid) return;
+  status('正在导入 STEP…', 'busy');
+  const fd = new FormData(); fd.append('file', f);
+  try {
+    const r = await api(`/projects/${S.pid}/import/step`, { method: 'POST', body: fd });
+    log(`STEP 导入：${r.face_count} 面 / ${r.solid_count} 实体` +
+        (r.diagnostics.length ? ` / ${r.diagnostics.length} 项诊断` : ''),
+        r.diagnostics.length ? 'warn' : 'ok');
+    r.diagnostics.forEach(d => log(`  [${d.code}] ${d.msg}`, 'warn'));
+    await loadState();
+    if (S.pads.length) await runMrc();
+    status('STEP 已导入');
+  } catch (err) { log('STEP 导入失败：' + err.message, 'err'); status('导入失败'); }
+  e.target.value = '';
+};
+
+$('btnBoard').onclick = () => $('fileBoard').click();
+$('fileBoard').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f || !S.pid) return;
+  status('正在导入板文件…', 'busy');
+  const fd = new FormData(); fd.append('file', f);
+  try {
+    const r = await api(`/projects/${S.pid}/import/board`, { method: 'POST', body: fd });
+    log(`板文件：${r.comps} 器件 / ${r.pads} 焊盘 / ${r.nets} 网络`, 'ok');
+    await loadState(); await runMrc();
+    status('板文件已导入');
+  } catch (err) { log('板文件导入失败：' + err.message, 'err'); status('导入失败'); }
+  e.target.value = '';
+};
+
+$('btnMrc').onclick = busy($('btnMrc'), async () => {
+  if (!S.pid) return log('请先打开或新建工程', 'warn');
+  status('正在检查…', 'busy');
+  await runMrc(); await loadState();
+  status('检查完成');
+});
+
+$('btnAi').onclick = busy($('btnAi'), async () => {
+  if (!S.pid) return log('请先打开或新建工程', 'warn');
+  status('正在计算收益排序…', 'busy');
+  const d = await api(`/projects/${S.pid}/ai/rank`);
+  log(`AI 排序（来源：${d.source === 'local' ? '本地模型' : d.source === 'cloud' ? '云端模型' : '规则先验'}）`, 'ok');
+  d.ordered.slice(0, 8).forEach(p =>
+    log(`  ${p.rank}. [${p.rule}] ${p.score.toFixed(3)} — ${p.reason.slice(0, 42)}`));
+  status('AI 排序完成');
+});
+
+$('btnAiMaaS').onclick = busy($('btnAiMaaS'), async () => {
+  if (!S.pid) return log('请先打开工程', 'warn');
+  if (!S.issues.length) {
+    log('请先「运行检查并评分」', 'warn');
+    return;
+  }
+  const issue = S.selected && S.selected.type === 'issue'
+    ? S.selected.data : S.issues[0];
+  status('正在调用华为云 MaaS 大模型…', 'busy');
+  try {
+    const d = await api(`/projects/${S.pid}/explain/ai`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rule_code: issue.rule_code, reason: issue.reason,
+        target_type: issue.target_type, severity: issue.severity,
+        penalty: issue.penalty, suggestion: issue.suggestion || '',
+      }),
+    });
+    if (d.ok) {
+      log(`【MaaS ${d.model}】${d.text}`, 'ok');
+      log(`耗时 ${d.latency_ms} ms，tokens ${d.usage && d.usage.completion_tokens || 0}`);
+      status('MaaS 解释完成');
+    } else {
+      log(`MaaS 未启用：${d.error}`, 'warn');
+      log(`回退到规则引擎建议：${d.fallback || '（无）'}`, 'warn');
+      log('提示：配置 AME_MAAS_API_KEY 后可用华为云大模型解释', 'warn');
+      status('MaaS 未配置，已降级');
+    }
+  } catch (e) {
+    log('MaaS 调用失败：' + e.message, 'err'); status('失败');
+  }
+});
+
+$('btnSlice').onclick = busy($('btnSlice'), async () => {
+  if (!S.pid) return log('请先打开或新建工程', 'warn');
+  status('正在切片…', 'busy');
+  const s = await api(`/projects/${S.pid}/slice`, { method: 'POST' });
+  log(`切片完成：${s.passes} 道次 / ${s.layer_count} 物理层 / 总厚 ${s.total_thickness_mm} mm`, 'ok');
+  log(`G-code 哈希 ${s.gcode_hash.slice(0, 16)}…`);
+  s.pass_details.forEach(p =>
+    log(`  道次 ${p.pass_no}｜${p.kind}｜${p.mat}｜Z=${p.z_mm}｜${p.paths} 条路径`));
+  (s.warnings || []).forEach(w => log('  ! ' + w, 'warn'));
+  // 切片完成后自动打开逐层播放条：用户下一步想看的就是路径（SLC-006）
+  S.playTotal = s.pass_details.length;
+  $('playRange').max = String(Math.max(0, S.playTotal - 1));
+  $('playbar').classList.remove('hidden');
+  fitCanvas();          // 播放条出现后画布变矮，位图尺寸要跟着变
+  await showPass(0);
+  log(`逐层播放已就绪：拖动滑块或点「下一道次」查看 ${S.playTotal} 个道次的路径`, 'ok');
+  status('切片完成，可逐层查看或下载 G-code');
+});
+
+$('btnGcode').onclick = async () => {
+  if (!S.pid) return log('请先打开工程', 'warn');
+  const r = await fetch(`/api/projects/${S.pid}/gcode`);
+  if (!r.ok) { const j = await r.json(); return log(j.detail || '下载失败', 'err'); }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ame-${S.pid.slice(0, 8)}.gcode`;
+  a.click(); URL.revokeObjectURL(a.href);
+  log('G-code 已下载（' + Math.round(blob.size / 1024) + ' KB）', 'ok');
+};
+
+$('btnAgent').onclick = busy($('btnAgent'), async () => {
+  if (!S.pid) return log('请先打开或新建工程', 'warn');
+  status('Agent 运行中（检查→修改→复检）…', 'busy');
+  $('rightHd').textContent = 'Agent 运行明细';
+  const r = await api(`/projects/${S.pid}/agent`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth: 'auto', max_rounds: 8 }) });
+  $('issues').innerHTML = `
+    <div class="issue s1">
+      <span class="r">结果</span>
+      <div>${r.score_start} → ${r.score_final} 分
+        （${r.score_final - r.score_start >= 0 ? '+' : ''}${r.score_final - r.score_start}）</div>
+      <div class="m">${r.rounds} 轮｜耗时 ${r.elapsed_s}s｜排序来源 ${r.ai_ranking}</div>
+      <div class="m">${escapeHtml(r.arbiter_note)}</div>
+    </div>` + r.cards.map(c => `
+    <div class="issue s1">
+      <span class="r">第 ${c.round} 轮</span>
+      <div>${c.before} → ${c.after}${c.rolled_back ? '（已回退：本轮使分数变差）' : ''}</div>
+      <div class="m">${c.actions.join('、')}</div>
+    </div>`).join('');
+  log(`Agent：${r.score_start} → ${r.score_final} 分，${r.rounds} 轮`, 'ok');
+  // 先刷新设计状态与分数，但**不要**调 runMrc()——它会 renderIssues()，
+  // 把刚渲染的 Agent 明细覆盖成问题列表。这里只更新分数。
+  await loadState();
+  status('Agent 完成（右侧为运行明细，点「运行检查并评分」可看剩余问题）');
+});
+
+$('logToggle').onclick = () => {
+  $('log').classList.toggle('hidden');
+};
+
+// ────────────────────────────────── 问题定位（MRC-010）
+// 用事件委托而不是给每条 issue 绑 onclick：runMrc/Agent 会整块重建 innerHTML，
+// 直接绑在节点上的监听会随旧 DOM 一起消失（这是"按钮点不动"的经典成因）。
+$('issues').addEventListener('click', e => {
+  const el = e.target.closest('.issue[data-idx]');
+  if (!el) return;
+  const issue = S.issues[Number(el.dataset.idx)];
+  if (!issue) return;
+  // 预览态下画布只画当前道次，此时"定位"什么也看不见。
+  // 先退出预览再高亮，否则用户会以为定位失败。
+  if (S.playIndex !== null) exitPlay();
+  S.selected = { type: 'issue', data: issue };
+  // 直接隐藏属性框而不用 showProp(null)：后者会把 S.selected 清成 null，
+  // 正好抹掉刚设好的问题选中。
+  $('prop').classList.add('hidden');
+  // 问题定位在二维平面（PCB 俯视）最直观，三维等轴测下坐标会被压缩
+  if (S.view !== '2d') document.querySelector('.tab[data-view="2d"]').click();
+  renderIssues();
+  scheduleDraw();
+  const hit = locateIssue(issue);
+  log(`定位 ${issue.rule_code}：${hit}`, hit === '未找到可定位几何' ? 'warn' : 'ok');
+  status(`已选中问题 ${issue.rule_code}（${issue.target_type}）`);
+});
+
+function locateIssue(issue) {
+  const tid = String(issue.target_id || '');
+  const parts = tid.split('|').map(s => s.trim());
+  for (const r of S.routes) {
+    if (tid.includes(String(r.id).slice(0, 8)) || parts.includes('走线 ' + r.net)) {
+      return `走线 ${r.net}`;
+    }
+  }
+  for (const p of S.pads) {
+    if (tid.includes(p.id.slice(0, 8)) || parts.includes(`焊盘${p.ref}.${p.pad_no}`)
+        || tid.includes(`焊盘${p.ref}.${p.pad_no}`)) {
+      return `焊盘 ${p.ref}.${p.pad_no}`;
+    }
+  }
+  return '未找到可定位几何';
+}
+
+// ────────────────────────────────── 热力图开关（MRC-010）
+$('btnHeat').onclick = busy($('btnHeat'), async () => {
+  if (!S.pid) return log('请先打开或新建工程', 'warn');
+  // 同上：热力图叠在单道次路径上没有意义，先退出预览
+  if (S.playIndex !== null) exitPlay();
+  if (S.heat) {
+    S.heat = false; S.heatData = null;
+    $('btnHeat').textContent = '热力图：关';
+    $('btnHeat').classList.remove('primary');
+    status('热力图已关闭');
+    scheduleDraw();
+    return;
+  }
+  status('正在计算热力图…', 'busy');
+  try {
+    const h = await api(`/projects/${S.pid}/heatmap`);
+    S.heatData = h; S.heat = true;
+    $('btnHeat').textContent = `热力图：开（${h.points.length} 处）`;
+    $('btnHeat').classList.add('primary');
+    // 热点是平面强度，在二维视图看最准
+    if (S.view !== '2d') document.querySelector('.tab[data-view="2d"]').click();
+    log(`热力图：${h.points.length} 个热点，最高权重 ${h.max_weight}` +
+        `（当前 ${h.score} 分）`, 'ok');
+    status('热力图已开启');
+  } catch (e) {
+    S.heat = false; S.heatData = null;
+    log('热力图失败：' + e.message, 'err'); status('失败');
+  }
+  scheduleDraw();
+});
+
+// ────────────────────────────────── 浮层（规则阈值 / 版本历史共用）
+function openModal(title, bodyHtml, footHtml) {
+  $('modalTitle').textContent = title;
+  $('modalBody').innerHTML = bodyHtml;
+  $('modalFt').innerHTML = footHtml || '';
+  $('modal').classList.add('on');
+}
+function closeModal() { $('modal').classList.remove('on'); }
+$('modalClose').onclick = closeModal;
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+window.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ────────────────────────────────── 规则阈值编辑（MRC-011）
+// 阈值是 {键: 数值} 的自由字典（R5 甚至为空），所以按实际返回的键动态生成
+// 输入框，而不是在前端硬编码 7 条规则的字段名——后者一旦后端加字段就静默丢值。
+function ruleKeyLabel(k) {
+  return ({
+    min_width: '最小线宽 (mm)', min_clear: '最小间距 (mm)',
+    max_slope_deg: '最大坡度 (度)', min_gap: '最小间隙 (mm)',
+    max_dt: '允许温差 (℃)', gradient_c_per_mm: '温度梯度 (℃/mm)',
+    min_channel: '最小流道 (mm)', dam_w: '坝宽 (mm)',
+  })[k] || k;
+}
+
+$('btnRules').onclick = busy($('btnRules'), async () => {
+  if (!S.pid) return log('请先打开或新建工程', 'warn');
+  status('正在读取规则…', 'busy');
+  try {
+    const rules = await api(`/projects/${S.pid}/rules`);
+    const body = rules.map(r => {
+      const keys = Object.keys(r.threshold || {});
+      const fields = keys.length
+        ? keys.map(k => `<label>${escapeHtml(ruleKeyLabel(k))}
+             <input type="number" step="0.05" data-code="${r.code}"
+                    data-key="${escapeHtml(k)}" value="${r.threshold[k]}"></label>`).join('')
+        : '<span class="m" style="color:var(--muted)">该规则无阈值参数</span>';
+      return `<div class="ruleRow">
+        <span class="rc">${r.code}</span>
+        <span class="rn">${escapeHtml(r.name)}</span>
+        <label><input type="checkbox" data-en="${r.code}" ${r.enabled ? 'checked' : ''}> 启用</label>
+        ${fields}
+        <span class="rr">v${r.rule_version}｜权重 ${r.weight}</span>
+      </div>`;
+    }).join('');
+    openModal('规则阈值（MRC-011）',
+      `<div class="hint">改完点「保存并重新评分」：阈值版本 +1，评分即刻重算。
+注意分数会随阈值变化——这是规则版本化，不是覆盖历史。</div>${body}`,
+      '<button class="primary" id="btnRulesSave">保存并重新评分</button>');
+    // 记住原始值，保存时只提交真正改动过的键（见 saveRules 的说明）
+    S.rulesOrig = Object.fromEntries(rules.map(r => [r.code, { ...(r.threshold || {}) }]));
+    S.rulesEnabled = Object.fromEntries(rules.map(r => [r.code, !!r.enabled]));
+    $('btnRulesSave').onclick = busy($('btnRulesSave'), saveRules);
+    status('规则已载入');
+  } catch (e) {
+    log('读取规则失败：' + e.message, 'err'); status('失败');
+  }
+});
+
+async function saveRules() {
+  // 只提交**改动过**的项：把没改的也 POST 一遍会让 rule_version 无意义地
+  // 递增，版本历史就成了噪音（且 cmd_set_rule 每调一次都记一条日志）。
+  let changed = 0;
+  const byCode = new Map();
+  document.querySelectorAll('#modalBody input[data-code]').forEach(inp => {
+    const code = inp.dataset.code;
+    const orig = (S.rulesOrig && S.rulesOrig[code]) || {};
+    const val = Number(inp.value);
+    if (Object.is(orig[inp.dataset.key], val)) return;
+    if (!byCode.has(code)) byCode.set(code, {});
+    byCode.get(code)[inp.dataset.key] = val;
+  });
+  // 启停状态单独处理：阈值没改但勾选变了，也要提交
+  document.querySelectorAll('#modalBody input[data-en]').forEach(inp => {
+    const code = inp.dataset.en;
+    const was = S.rulesEnabled ? !!S.rulesEnabled[code] : null;
+    if (was === inp.checked) return;
+    if (!byCode.has(code)) byCode.set(code, null);
+  });
+  for (const code of byCode.keys()) {
+    const thr = byCode.get(code);
+    const enBox = document.querySelector(`#modalBody input[data-en="${code}"]`);
+    const wantEn = enBox ? enBox.checked : null;
+    const enChanged = S.rulesEnabled
+      ? S.rulesEnabled[code] !== wantEn : false;
+    const payload = {};
+    if (thr) payload.threshold = thr;
+    if (enChanged) payload.enabled = wantEn;
+    try {
+      await api(`/projects/${S.pid}/rules/${code}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      changed += 1;
+    } catch (e) {
+      log(`规则 ${code} 保存失败：${e.message}`, 'err');
+      status('保存失败'); return;
+    }
+  }
+  if (!changed) {
+    closeModal();
+    log('规则未改动，无需保存', 'warn');
+    status('未改动');
+    return;
+  }
+  await runMrc();
+  await loadState();
+  closeModal();
+  log(`规则已保存（${changed} 条规则更新），重新评分：${S.score} 分`, 'ok');
+  status('规则已保存并重新评分');
+}
+
+// ────────────────────────────────── 版本历史（PRJ-004）
+$('btnVersions').onclick = busy($('btnVersions'), async () => {
+  if (!S.pid) return log('请先打开或新建工程', 'warn');
+  status('正在读取版本…', 'busy');
+  try {
+    const vs = await api(`/projects/${S.pid}/versions`);
+    if (!vs.length) {
+      openModal('版本历史（PRJ-004）',
+        '<div class="hint">还没有提交过版本。切片或 Agent 会自动提交。</div>');
+      status('无版本记录');
+      return;
+    }
+    // 倒序：最近的在最上面，符合"看历史"的直觉
+    const body = vs.slice().reverse().map(v => {
+      const sb = v.score_before === null ? '—' : v.score_before;
+      const sa = v.score_after === null ? '—' : v.score_after;
+      const delta = (v.score_before !== null && v.score_after !== null)
+        ? `（${v.score_after - v.score_before >= 0 ? '+' : ''}${v.score_after - v.score_before}）`
+        : '';
+      return `<div class="verRow">
+        <div class="vh">
+          <span class="rc" style="color:var(--accent);font-family:Consolas,monospace">
+            #${v.seq}</span>
+          <span style="font-weight:600">${escapeHtml(v.reason || '(无原因)')}</span>
+          <span class="vs" style="margin-left:auto">${sb} → ${sa}${delta}</span>
+        </div>
+        <div class="vd">${escapeHtml(v.author || 'system')}｜${escapeHtml(v.created_at || '')}
+          ｜变更：${(v.changed || []).map(escapeHtml).join('、') || '—'}</div>
+      </div>`;
+    }).join('');
+    openModal(`版本历史（PRJ-004）· 共 ${vs.length} 版`, body);
+    log(`版本历史：${vs.length} 条`, 'ok');
+    status('版本历史已载入');
+  } catch (e) {
+    log('读取版本失败：' + e.message, 'err'); status('失败');
+  }
+});
+
+// ────────────────────────────────── 剖切（STR-003）
+$('sectionZ').oninput = () => {
+  const raw = $('sectionZ').value.trim();
+  if (raw === '') { S.sectionZ = null; scheduleDraw(); return; }
+  const z = Number(raw);
+  if (!Number.isFinite(z)) return;
+  S.sectionZ = z;
+  if (S.view !== '3d') document.querySelector('.tab[data-view="3d"]').click();
+  scheduleDraw();
+  status(`剖切：只显示 Z ≤ ${z} mm 的面`);
+};
+$('btnSectionClear').onclick = () => {
+  S.sectionZ = null; $('sectionZ').value = '';
+  scheduleDraw(); status('剖切已取消');
+};
+
+// ────────────────────────────────── 逐层播放（SLC-006）
+$('playRange').oninput = e => { showPass(Number(e.target.value)); };
+$('btnPlayPrev').onclick = () => showPass(S.playIndex - 1);
+$('btnPlayNext').onclick = () => showPass(S.playIndex + 1);
+$('playEnds').onchange = e => { S.playEnds = e.target.checked; scheduleDraw(); };
+$('btnPlayExit').onclick = () => exitPlay();
+
+async function showPass(idx) {
+  if (S.playTotal <= 0 || !S.pid) return;
+  idx = Math.max(0, Math.min(S.playTotal - 1, idx));
+  try {
+    // 每次都取后端：路径是库里那份切片的真实数据，不在前端复制一份状态
+    const d = await api(`/projects/${S.pid}/layer/${idx}`);
+    S.playIndex = idx; S.playLayer = d;
+    $('playRange').value = String(idx);
+    $('playInfo').textContent =
+      `道次 ${d.pass_no}/${d.total_passes - 1}｜${d.kind}/${d.mat}｜Z=${d.z_mm}｜${d.path_count} 条路径`;
+    if (S.view !== '2d') document.querySelector('.tab[data-view="2d"]').click();
+    scheduleDraw();
+  } catch (e) {
+    log('读取道次失败：' + e.message, 'err');
+    status('逐层播放失败');
+  }
+}
+
+function exitPlay() {
+  S.playIndex = null; S.playLayer = null; S.playTotal = 0;
+  $('playbar').classList.add('hidden');
+  // 播放条显隐会改变画布的可用高度，而布局变化不触发 window resize。
+  // 不重算位图尺寸会让画布出现拉伸或底部空白（实测：退出预览后画面变形）。
+  fitCanvas();
+  scheduleDraw();
+  status('已退出逐层播放');
+}
+
+// 视图切换
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    S.view = t.dataset.view;
+    scheduleDraw();
+  };
+});
+
+// ────────────────────────────────── 选择与布线（真实交互）
+function fromScreen(px, py) {
+  // 画布坐标 → 世界坐标（二维视图的逆变换）
+  const k = scaleFor();
+  if (S.view === '2d') {
+    return [k.cx + (px - k.w / 2 - S.panX) / k.s,
+            k.cy - (py - k.h / 2 - S.panY) / k.s];
+  }
+  // 三维下不精确（等轴测不可逆），只允许在二维布线，这里给近似值
+  return [k.cx + (px - k.w / 2 - S.panX) / k.s,
+          k.cy - (py - k.h / 2 - S.panY) / k.s];
+}
+
+function nearestPad(wx, wy, tolPx = 12) {
+  let best = null, bestD = tolPx / Math.max(0.2, 1);
+  // 用屏幕距离判断（缩放后视觉上"点到了"才算）
+  for (const p of S.pads) {
+    const q = toScreen(p.x, p.y, 0.34);
+    const d = Math.hypot(q[0] - toScreen(wx, wy, 0.34)[0],
+                         q[1] - toScreen(wx, wy, 0.34)[1]);
+    if (d < bestD) { best = p; bestD = d; }
+  }
+  return best;
+}
+
+function distToRoute(wx, wy, r) {
+  // 点到折线的最短距离（世界坐标）
+  let best = Infinity;
+  const pts = r.pts || [];
+  for (let i = 1; i < pts.length; i++) {
+    const [x1, y1] = pts[i - 1], [x2, y2] = pts[i];
+    const dx = x2 - x1, dy = y2 - y1;
+    const seg2 = dx * dx + dy * dy;
+    const t = seg2 <= 1e-12 ? 0
+      : Math.max(0, Math.min(1, ((wx - x1) * dx + (wy - y1) * dy) / seg2));
+    const px = x1 + t * dx, py = y1 + t * dy;
+    best = Math.min(best, Math.hypot(wx - px, wy - py));
+  }
+  return best;
+}
+
+function selectAt(wx, wy) {
+  // 阈值按当前缩放换算：屏幕上 10 px 内算点中
+  const k = scaleFor();
+  const tol = 10 / Math.max(0.01, k.s);
+  let best = null, bestD = Infinity;
+  for (const r of S.routes) {
+    const d = distToRoute(wx, wy, r);
+    if (d < bestD) { bestD = d; best = { type: 'route', data: r }; }
+  }
+  for (const c of S.comps) {
+    const d = Math.hypot(c.x - wx, c.y - wy);
+    if (d < bestD) { bestD = d; best = { type: 'comp', data: c }; }
+  }
+  return bestD <= tol ? best : null;
+}
+
+function showProp(sel) {
+  const box = $('prop');
+  if (!sel) { box.classList.add('hidden'); S.selected = null; return; }
+  S.selected = sel;
+  box.classList.remove('hidden');
+  $('issues').classList.add('hidden');
+  if (sel.type === 'route') {
+    const r = sel.data;
+    $('propBody').innerHTML = `
+      <div style="font-weight:600;margin-bottom:6px">走线 ${escapeHtml(r.net || '')}</div>
+      <div class="m" style="color:var(--muted);margin-bottom:6px">
+        宽度 ${r.width} mm｜${(r.pts || []).length} 点</div>
+      <div>线宽 (mm)：<input id="widthInput" type="number" step="0.05"
+           min="0.5" max="5" value="${r.width}"></div>`;
+    $('btnWidthApply').style.display = '';
+    $('btnDeleteSel').style.display = '';
+  } else {
+    $('propBody').innerHTML = `
+      <div style="font-weight:600;margin-bottom:6px">器件 ${escapeHtml(sel.data.ref || '')}</div>
+      <div class="m" style="color:var(--muted)">
+        ${sel.data.footprint || '—'}<br>位置 (${sel.data.x}, ${sel.data.y})</div>`;
+    $('btnWidthApply').style.display = 'none';
+    $('btnDeleteSel').style.display = 'none';
+  }
+}
+
+$('btnRoute').onclick = () => {
+  if (!S.pid) return log('请先打开工程', 'warn');
+  S.tool = S.tool === 'route' ? null : 'route';
+  S.dragPts = []; S.routeNet = null;
+  if (S.view !== '2d') {
+    document.querySelector('.tab[data-view="2d"]').click();
+  }
+  $('btnRoute').textContent = S.tool === 'route' ? '结束布线（或双击）' : '开始布线（画布上点击）';
+  status(S.tool === 'route'
+    ? '布线：先点一个焊盘选网络，再依次点落点，双击结束'
+    : '已退出布线');
+  scheduleDraw();
+};
+
+$('btnWidthApply').onclick = async () => {
+  if (!S.selected || S.selected.type !== 'route') return;
+  const w = parseFloat($('widthInput').value);
+  status('正在改线宽…', 'busy');
+  try {
+    await api(`/projects/${S.pid}/routes/${S.selected.data.id}/width`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ width: w }) });
+    log(`线宽已改为 ${w} mm`, 'ok');
+    await loadState(); await runMrc();
+    showProp(null); $('issues').classList.remove('hidden');
+    status('线宽已更新');
+  } catch (e) { log('改线宽失败：' + e.message, 'err'); status('失败'); }
+};
+
+$('btnDeleteSel').onclick = async () => {
+  if (!S.selected || S.selected.type !== 'route') return;
+  status('正在删除…', 'busy');
+  try {
+    await api(`/projects/${S.pid}/routes/${S.selected.data.id}`, { method: 'DELETE' });
+    log('走线已删除（可 Ctrl+Z 撤销）', 'ok');
+    await loadState(); await runMrc();
+    showProp(null); $('issues').classList.remove('hidden');
+    status('已删除');
+  } catch (e) { log('删除失败：' + e.message, 'err'); status('失败'); }
+};
+
+$('btnUndo').onclick = async () => {
+  if (!S.pid) return;
+  try {
+    const r = await api(`/projects/${S.pid}/undo`, { method: 'POST' });
+    log(r.message, 'ok');
+    await loadState(); await runMrc();
+    status('已撤销');
+  } catch (e) { log('撤销失败：' + e.message, 'err'); }
+};
+$('btnRedo').onclick = async () => {
+  if (!S.pid) return;
+  try {
+    const r = await api(`/projects/${S.pid}/redo`, { method: 'POST' });
+    log(r.message, 'ok');
+    await loadState(); await runMrc();
+    status('已重做');
+  } catch (e) { log('重做失败：' + e.message, 'err'); }
+};
+
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); $('btnUndo').click(); }
+  if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+    e.preventDefault(); $('btnRedo').click();
+  }
+  if (e.key === 'Escape') {
+    // 浮层开着时 Esc 只关浮层，不要顺手退出布线/清空选中（一次按键一个效果）
+    if ($('modal').classList.contains('on')) return;
+    S.tool = null; S.dragPts = []; S.routeNet = null;
+    $('btnRoute').textContent = '开始布线（画布上点击）';
+    $('issues').classList.remove('hidden'); showProp(null);
+    scheduleDraw();
+  }
+});
+
+// 画布交互：拖拽平移 / 三维旋转 / 滚轮缩放
+cv.addEventListener('mousedown', e => {
+  const rect = cv.getBoundingClientRect();
+  S.drag = { x: e.clientX, y: e.clientY, az: S.az, el: S.el,
+             px: S.panX, py: S.panY, btn: e.button,
+             cx: e.clientX - rect.left, cy: e.clientY - rect.top,
+             moved: 0 };
+});
+cv.addEventListener('mousemove', e => {
+  if (!S.drag) return;
+  const dx = e.clientX - S.drag.x, dy = e.clientY - S.drag.y;
+  S.drag.moved = Math.max(S.drag.moved, Math.hypot(dx, dy));
+  if (S.drag.btn === 0 && S.view === '3d') {
+    S.az = S.drag.az - dx * 0.008;
+    S.el = Math.max(-1.4, Math.min(1.4, S.drag.el + dy * 0.006));
+  } else {
+    S.panX = S.drag.px + dx; S.panY = S.drag.py + dy;
+  }
+  scheduleDraw();
+});
+window.addEventListener('mouseup', async (e) => {
+  const d = S.drag;
+  S.drag = null;
+  if (!d || d.btn !== 0 || d.moved > 4) return;   // 拖拽过就不是点击
+  if (!S.pid) return;
+
+  const wx = fromScreen(d.cx, d.cy)[0];
+  const wy = fromScreen(d.cx, d.cy)[1];
+
+  // ---- 布线流程 ----
+  if (S.tool === 'route') {
+    if (!S.routeNet) {
+      const pad = nearestPad(wx, wy);
+      if (pad && pad.net) {
+        S.routeNet = pad.net;
+        S.dragPts = [[pad.x, pad.y, 0]];
+        log(`布线网络：${pad.net}（已选起点）`, 'ok');
+        status(`布线中：网络 ${pad.net}，继续点击落点，双击结束`);
+        scheduleDraw();
+      } else {
+        log('请先点一个焊盘来选择网络', 'warn');
+      }
+      return;
+    }
+    S.dragPts.push([wx, wy, 0]);
+    log(`落点 ${S.dragPts.length}：( ${wx.toFixed(1)}, ${wy.toFixed(1)} )`);
+    scheduleDraw();
+    status(`布线中：${S.dragPts.length} 个点，双击结束`);
+    return;
+  }
+
+  // ---- 选择流程 ----
+  const sel = selectAt(wx, wy);
+  showProp(sel);
+  scheduleDraw();
+});
+cv.addEventListener('dblclick', async () => {
+  if (S.tool !== 'route' || !S.routeNet || S.dragPts.length < 2) return;
+  // 去掉相邻重复点（双击会先触发两次点击）
+  const pts = [];
+  for (const p of S.dragPts) {
+    if (!pts.length || Math.hypot(p[0] - pts[pts.length-1][0],
+                                  p[1] - pts[pts.length-1][1]) > 1e-6) {
+      pts.push(p);
+    }
+  }
+  if (pts.length < 2) { log('布线取消：至少需要 2 个落点', 'warn'); return; }
+  status('正在落线…', 'busy');
+  try {
+    await api(`/projects/${S.pid}/route`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ net: S.routeNet, pts, width: 0.6 }),
+    });
+    log(`已布 1 条走线（网络 ${S.routeNet}，${pts.length} 点）`, 'ok');
+    await loadState(); await runMrc();
+    status('布线完成');
+  } catch (err) {
+    log('布线被拒：' + err.message, 'err');
+    status('布线失败');
+  }
+  S.dragPts = []; S.routeNet = null; S.tool = null;
+  $('btnRoute').textContent = '开始布线（画布上点击）';
+  scheduleDraw();
+});
+
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  S.zoom = Math.max(0.15, Math.min(12, S.zoom * (e.deltaY > 0 ? 0.9 : 1.1)));
+  scheduleDraw();
+}, { passive: false });
+window.addEventListener('resize', () => { fitCanvas(); scheduleDraw(); });
+
+// 只读调试钩子：给自动化测试用（前端单测与浏览器验收需要精确坐标）。
+// 只暴露读接口，不提供写能力——写入仍必须走 REST 接口。
+window.__ame = {
+  state: () => ({ view: S.view, tool: S.tool, routeNet: S.routeNet,
+                  dragPts: S.dragPts.length, routes: S.routes.length,
+                  pads: S.pads.map(p => ({ x: p.x, y: p.y, net: p.net,
+                                           ref: p.ref, no: p.pad_no })),
+                  comps: S.comps, zoom: S.zoom,
+                  heat: S.heat, heatPoints: S.heatData ? S.heatData.points.length : 0,
+                  sectionZ: S.sectionZ,
+                  playIndex: S.playIndex,
+                  playPathCount: S.playLayer ? S.playLayer.paths.length : 0,
+                  selected: S.selected ? S.selected.type : null,
+                  visibleFaces: S.faces.filter(f =>
+                    S.sectionZ === null
+                    || (f.loop || []).some(p => p[2] <= S.sectionZ + 1e-6)).length,
+                  totalFaces: S.faces.length }),
+  toScreen: (x, y, z) => toScreen(x, y, z || 0),
+  fromScreen: (px, py) => fromScreen(px, py),
+  locateIssue: (issue) => locateIssue(issue),
+};
+
+// ────────────────────────────────── 启动
+(async () => {
+  fitCanvas();
+  try {
+    const h = await api('/health');
+    $('backend').textContent = '存储 ' + (h.storage === 'postgresql' ? 'RDS PostgreSQL' : 'SQLite');
+    log(`后端就绪 v${h.version}｜存储 ${h.storage}`, 'ok');
+  } catch (e) {
+    log('后端不可达：' + e.message, 'err');
+  }
+  try {
+    const m = await api('/meta');
+    log(`能力：${m.domains.join(' / ')}`);
+  } catch (_) {}
+  draw();
+})();
+</script>
+</body>
+</html>
