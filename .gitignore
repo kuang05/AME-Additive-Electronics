@@ -25,9 +25,12 @@ tmp/
 *.log
 
 # ---- 运行期数据目录（工程库 / blob / 导出） ----
-data/
-out/
-exports/
+# 注意：只能锚定到仓库根，不能写成 `data/`——那样会把 samples/data/
+# （测试与验收依赖的 STEP / KiCad / 网表样本，共 19 个文件）一起排掉，
+# 导致克隆出来的仓库 `pytest` 直接抛 4 个收集错误。
+/data/
+/out/
+/exports/
 *.db
 *.sqlite
 *.sqlite3
